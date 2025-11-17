@@ -151,3 +151,106 @@
   white-space: nowrap;
   font-weight: 600;
 }
+
+/* Instagram Diff Styling */
+.followers-diff {
+  margin-top: 30px;
+}
+
+.diff-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  border-left: 4px solid;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.diff-section.not-following-back {
+  border-left-color: #ff6b6b;
+}
+
+.diff-section.not-followed-back {
+  border-left-color: #4ecdc4;
+}
+
+.diff-section.mutual {
+  border-left-color: #95e1d3;
+}
+
+.diff-section h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.1rem;
+}
+
+.diff-section .emoji {
+  font-size: 1.2em;
+}
+
+.section-description {
+  color: #718096;
+  font-size: 0.9em;
+  margin-bottom: 15px;
+  margin-top: 0;
+}
+
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+  background-color: #f7fafc;
+  border-radius: 6px;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background-color: #ffffff;
+  border-radius: 6px;
+  color: #2d3748;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border: 1px solid #e2e8f0;
+}
+
+.user-item:hover {
+  background-color: #edf2f7;
+  transform: translateX(4px);
+  border-color: #cbd5e0;
+}
+
+.user-item .username {
+  font-weight: 500;
+  font-family: "Courier New", monospace;
+  font-size: 0.95rem;
+}
+
+.user-item svg {
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.user-item:hover svg {
+  opacity: 1;
+}
+
+.empty-message {
+  color: #718096;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+  background-color: #f7fafc;
+  border-radius: 6px;
+  margin: 0;
+}
