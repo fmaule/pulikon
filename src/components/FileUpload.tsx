@@ -2,11 +2,6 @@ import JSZip from "jszip";
 import { type ChangeEvent, type DragEvent, useRef, useState } from "react";
 import "./FileUpload.css";
 
-interface ZipFileEntry {
-  name: string;
-  size: number;
-}
-
 interface InstagramUser {
   username: string;
   url: string;
@@ -24,8 +19,6 @@ export function FileUpload() {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [zipContents, setZipContents] = useState<ZipFileEntry[]>([]);
-  const [fileName, setFileName] = useState<string | null>(null);
   const [diff, setDiff] = useState<FollowersDiff | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -110,8 +103,6 @@ export function FileUpload() {
   const processFile = async (file: File) => {
     // Reset state
     setError(null);
-    setZipContents([]);
-    setFileName(null);
     setDiff(null);
 
     // Validate file type
@@ -128,24 +119,19 @@ export function FileUpload() {
     }
 
     setIsProcessing(true);
-    setFileName(file.name);
 
     try {
       const zip = new JSZip();
       const zipData = await zip.loadAsync(file);
 
-      const entries: ZipFileEntry[] = [];
       let followingData: InstagramUser[] = [];
       let followersData: InstagramUser[] = [];
+      let fileCount = 0;
 
       // Extract file information and Instagram data
       for (const [relativePath, zipEntry] of Object.entries(zipData.files)) {
         if (!zipEntry.dir) {
-          const data = await zipEntry.async("uint8array");
-          entries.push({
-            name: relativePath,
-            size: data.length,
-          });
+          fileCount++;
 
           // Check for Instagram JSON files
           if (
@@ -166,20 +152,16 @@ export function FileUpload() {
         }
       }
 
-      if (entries.length === 0) {
+      if (fileCount === 0) {
         setError("The ZIP file is empty");
-      } else {
-        setZipContents(entries);
-
+      } else if (followingData.length > 0 && followersData.length > 0) {
         // Calculate diff if we found both files
-        if (followingData.length > 0 && followersData.length > 0) {
-          const diffResult = calculateDiff(followingData, followersData);
-          setDiff(diffResult);
-        } else if (followingData.length === 0 && followersData.length === 0) {
-          setError(
-            "Could not find Instagram data files (following.json and followers_1.json) in the expected location"
-          );
-        }
+        const diffResult = calculateDiff(followingData, followersData);
+        setDiff(diffResult);
+      } else if (followingData.length === 0 && followersData.length === 0) {
+        setError(
+          "Could not find Instagram data files (following.json and followers_1.json) in the expected location"
+        );
       }
     } catch (err) {
       setError(
@@ -247,25 +229,10 @@ export function FileUpload() {
         </div>
       )}
 
-      {fileName && zipContents.length > 0 && !error && (
-        <div className="message success-message">
-          <strong>Success!</strong> Uploaded {fileName} with{" "}
-          {zipContents.length} {zipContents.length === 1 ? "file" : "files"}
-        </div>
-      )}
-
       {diff && (
         <div className="followers-diff">
-          <h2>Followers Analysis</h2>
-
           <div className="diff-section not-following-back">
-            <h3>
-              <span className="emoji">😔</span> Not Following You Back (
-              {diff.notFollowingBack.length})
-            </h3>
-            <p className="section-description">
-              You follow them, but they don't follow you back
-            </p>
+            <h3>Not Following You Back ({diff.notFollowingBack.length})</h3>
             {diff.notFollowingBack.length > 0 ? (
               <div className="user-list">
                 {diff.notFollowingBack.map((user) => (
@@ -302,13 +269,7 @@ export function FileUpload() {
           </div>
 
           <div className="diff-section not-followed-back">
-            <h3>
-              <span className="emoji">👥</span> Your Followers (
-              {diff.notFollowedBack.length})
-            </h3>
-            <p className="section-description">
-              They follow you, but you don't follow them back
-            </p>
+            <h3>Your Followers ({diff.notFollowedBack.length})</h3>
             {diff.notFollowedBack.length > 0 ? (
               <div className="user-list">
                 {diff.notFollowedBack.map((user) => (
@@ -345,13 +306,7 @@ export function FileUpload() {
           </div>
 
           <div className="diff-section mutual">
-            <h3>
-              <span className="emoji">💚</span> Mutual Followers (
-              {diff.mutual.length})
-            </h3>
-            <p className="section-description">
-              You follow each other - the real connections!
-            </p>
+            <h3>Mutual Followers ({diff.mutual.length})</h3>
             {diff.mutual.length > 0 ? (
               <div className="user-list">
                 {diff.mutual.map((user) => (
