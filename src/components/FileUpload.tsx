@@ -13,13 +13,34 @@ interface FollowersDiff {
   mutual: InstagramUser[]; // Both follow each other
 }
 
+interface StoredBaseline {
+  timestamp: number;
+  followers: string[];
+  following: string[];
+}
+
+interface FollowerChanges {
+  newUnfollows: InstagramUser[];
+  newFollowers: InstagramUser[];
+  youUnfollowed: InstagramUser[];
+  newMutual: InstagramUser[];
+}
+
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB in bytes
+const BASELINE_KEY = "instagram_baseline";
 
 export function FileUpload() {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [diff, setDiff] = useState<FollowersDiff | null>(null);
+  const [baseline, setBaseline] = useState<StoredBaseline | null>(null);
+  const [changes, setChanges] = useState<FollowerChanges | null>(null);
+  const [currentData, setCurrentData] = useState<{
+    followers: InstagramUser[];
+    following: InstagramUser[];
+  } | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: DragEvent<HTMLButtonElement>) => {
@@ -100,6 +121,114 @@ export function FileUpload() {
     };
   };
 
+  const loadBaseline = (): StoredBaseline | null => {
+    try {
+      const stored = localStorage.getItem(BASELINE_KEY);
+      if (stored) {
+        return JSON.parse(stored) as StoredBaseline;
+      }
+    } catch (err) {
+      console.error("Failed to load baseline:", err);
+    }
+    return null;
+  };
+
+  const saveBaseline = (
+    followers: InstagramUser[],
+    following: InstagramUser[]
+  ): boolean => {
+    try {
+      const baseline: StoredBaseline = {
+        timestamp: Date.now(),
+        followers: followers.map((u) => u.username),
+        following: following.map((u) => u.username),
+      };
+      localStorage.setItem(BASELINE_KEY, JSON.stringify(baseline));
+      return true;
+    } catch (err) {
+      console.error("Failed to save baseline:", err);
+      return false;
+    }
+  };
+
+  const clearBaseline = (): void => {
+    try {
+      localStorage.removeItem(BASELINE_KEY);
+      setBaseline(null);
+      setChanges(null);
+      setSaveMessage("Baseline cleared");
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (err) {
+      console.error("Failed to clear baseline:", err);
+    }
+  };
+
+  const calculateChanges = (
+    currentFollowers: InstagramUser[],
+    currentFollowing: InstagramUser[],
+    baseline: StoredBaseline
+  ): FollowerChanges => {
+    const baselineFollowersSet = new Set(baseline.followers);
+    const baselineFollowingSet = new Set(baseline.following);
+
+    const currentFollowersSet = new Set(
+      currentFollowers.map((u) => u.username)
+    );
+    const currentFollowingSet = new Set(
+      currentFollowing.map((u) => u.username)
+    );
+
+    // New unfollows: people who were following you but aren't anymore
+    const newUnfollows = currentFollowers.filter(
+      (u) => !baselineFollowersSet.has(u.username)
+    );
+
+    // New followers: people following you now who weren't before
+    const newFollowers = currentFollowers.filter(
+      (u) =>
+        baselineFollowersSet.has(u.username) &&
+        !currentFollowersSet.has(u.username)
+    );
+
+    // You unfollowed: people you were following but aren't anymore
+    const youUnfollowed = currentFollowing.filter(
+      (u) =>
+        baselineFollowingSet.has(u.username) &&
+        !currentFollowingSet.has(u.username)
+    );
+
+    // New mutual: people who are now mutual but weren't before
+    const newMutual = currentFollowing.filter(
+      (u) =>
+        currentFollowersSet.has(u.username) &&
+        baselineFollowingSet.has(u.username) &&
+        !baselineFollowersSet.has(u.username)
+    );
+
+    return {
+      newUnfollows,
+      newFollowers,
+      youUnfollowed,
+      newMutual,
+    };
+  };
+
+  const handleSaveBaseline = (): void => {
+    if (!currentData) return;
+
+    const success = saveBaseline(currentData.followers, currentData.following);
+    if (success) {
+      const newBaseline = loadBaseline();
+      setBaseline(newBaseline);
+      setChanges(null);
+      setSaveMessage("Baseline saved successfully!");
+      setTimeout(() => setSaveMessage(null), 3000);
+    } else {
+      setSaveMessage("Failed to save baseline");
+      setTimeout(() => setSaveMessage(null), 3000);
+    }
+  };
+
   const processFile = async (file: File) => {
     // Reset state
     setError(null);
@@ -158,6 +287,35 @@ export function FileUpload() {
         // Calculate diff if we found both files
         const diffResult = calculateDiff(followingData, followersData);
         setDiff(diffResult);
+
+        // Load existing baseline
+        const existingBaseline = loadBaseline();
+        setBaseline(existingBaseline);
+
+        // Save current data
+        setCurrentData({
+          followers: followersData,
+          following: followingData,
+        });
+
+        // If baseline exists, calculate changes
+        if (existingBaseline) {
+          const followerChanges = calculateChanges(
+            followersData,
+            followingData,
+            existingBaseline
+          );
+          setChanges(followerChanges);
+        } else {
+          // No baseline exists, auto-save first upload
+          const success = saveBaseline(followersData, followingData);
+          if (success) {
+            const newBaseline = loadBaseline();
+            setBaseline(newBaseline);
+            setSaveMessage("First upload saved as baseline");
+            setTimeout(() => setSaveMessage(null), 3000);
+          }
+        }
       } else if (followingData.length === 0 && followersData.length === 0) {
         setError(
           "Could not find Instagram data files (following.json and followers_1.json) in the expected location"
@@ -229,115 +387,282 @@ export function FileUpload() {
         </div>
       )}
 
+      {saveMessage && <div className="message info-message">{saveMessage}</div>}
+
+      {changes && baseline && (
+        <div className="changes-section">
+          <h2>Changes Since Last Upload</h2>
+          <p className="baseline-timestamp">
+            Baseline from: {new Date(baseline.timestamp).toLocaleString()}
+          </p>
+
+          <div className="baseline-actions">
+            <button
+              type="button"
+              onClick={handleSaveBaseline}
+              className="save-baseline-btn"
+            >
+              Save as New Baseline
+            </button>
+            <button
+              type="button"
+              onClick={clearBaseline}
+              className="clear-baseline-btn"
+            >
+              Clear Baseline
+            </button>
+          </div>
+
+          <div className="followers-diff">
+            {changes.newUnfollows.length > 0 && (
+              <div className="diff-section new-unfollows">
+                <h3>
+                  People Who Unfollowed You ({changes.newUnfollows.length})
+                </h3>
+                <div className="user-list">
+                  {changes.newUnfollows.map((user) => (
+                    <a
+                      key={user.username}
+                      href={user.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="user-item"
+                    >
+                      <span className="username">@{user.username}</span>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-label="External link"
+                      >
+                        <title>Open Instagram profile</title>
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {changes.newFollowers.length > 0 && (
+              <div className="diff-section new-followers">
+                <h3>New Followers ({changes.newFollowers.length})</h3>
+                <div className="user-list">
+                  {changes.newFollowers.map((user) => (
+                    <a
+                      key={user.username}
+                      href={user.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="user-item"
+                    >
+                      <span className="username">@{user.username}</span>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-label="External link"
+                      >
+                        <title>Open Instagram profile</title>
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {changes.youUnfollowed.length > 0 && (
+              <div className="diff-section you-unfollowed">
+                <h3>People You Unfollowed ({changes.youUnfollowed.length})</h3>
+                <div className="user-list">
+                  {changes.youUnfollowed.map((user) => (
+                    <a
+                      key={user.username}
+                      href={user.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="user-item"
+                    >
+                      <span className="username">@{user.username}</span>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-label="External link"
+                      >
+                        <title>Open Instagram profile</title>
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {changes.newMutual.length > 0 && (
+              <div className="diff-section new-mutual">
+                <h3>New Mutual Followers ({changes.newMutual.length})</h3>
+                <div className="user-list">
+                  {changes.newMutual.map((user) => (
+                    <a
+                      key={user.username}
+                      href={user.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="user-item"
+                    >
+                      <span className="username">@{user.username}</span>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-label="External link"
+                      >
+                        <title>Open Instagram profile</title>
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {diff && (
-        <div className="followers-diff">
-          <div className="diff-section not-following-back">
-            <h3>Not Following You Back ({diff.notFollowingBack.length})</h3>
-            {diff.notFollowingBack.length > 0 ? (
-              <div className="user-list">
-                {diff.notFollowingBack.map((user) => (
-                  <a
-                    key={user.username}
-                    href={user.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="user-item"
-                  >
-                    <span className="username">@{user.username}</span>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      aria-label="External link"
+        <div className="current-snapshot">
+          <h2>Current Snapshot</h2>
+          <div className="followers-diff">
+            <div className="diff-section not-following-back">
+              <h3>Not Following You Back ({diff.notFollowingBack.length})</h3>
+              {diff.notFollowingBack.length > 0 ? (
+                <div className="user-list">
+                  {diff.notFollowingBack.map((user) => (
+                    <a
+                      key={user.username}
+                      href={user.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="user-item"
                     >
-                      <title>Open Instagram profile</title>
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                      <polyline points="15 3 21 3 21 9" />
-                      <line x1="10" y1="14" x2="21" y2="3" />
-                    </svg>
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <p className="empty-message">
-                Everyone you follow is following you back! 🎉
-              </p>
-            )}
-          </div>
+                      <span className="username">@{user.username}</span>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-label="External link"
+                      >
+                        <title>Open Instagram profile</title>
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-message">
+                  Everyone you follow is following you back! 🎉
+                </p>
+              )}
+            </div>
 
-          <div className="diff-section not-followed-back">
-            <h3>Your Followers ({diff.notFollowedBack.length})</h3>
-            {diff.notFollowedBack.length > 0 ? (
-              <div className="user-list">
-                {diff.notFollowedBack.map((user) => (
-                  <a
-                    key={user.username}
-                    href={user.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="user-item"
-                  >
-                    <span className="username">@{user.username}</span>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      aria-label="External link"
+            <div className="diff-section not-followed-back">
+              <h3>Your Followers ({diff.notFollowedBack.length})</h3>
+              {diff.notFollowedBack.length > 0 ? (
+                <div className="user-list">
+                  {diff.notFollowedBack.map((user) => (
+                    <a
+                      key={user.username}
+                      href={user.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="user-item"
                     >
-                      <title>Open Instagram profile</title>
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                      <polyline points="15 3 21 3 21 9" />
-                      <line x1="10" y1="14" x2="21" y2="3" />
-                    </svg>
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <p className="empty-message">
-                You follow all of your followers! ✨
-              </p>
-            )}
-          </div>
+                      <span className="username">@{user.username}</span>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-label="External link"
+                      >
+                        <title>Open Instagram profile</title>
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-message">
+                  You follow all of your followers! ✨
+                </p>
+              )}
+            </div>
 
-          <div className="diff-section mutual">
-            <h3>Mutual Followers ({diff.mutual.length})</h3>
-            {diff.mutual.length > 0 ? (
-              <div className="user-list">
-                {diff.mutual.map((user) => (
-                  <a
-                    key={user.username}
-                    href={user.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="user-item"
-                  >
-                    <span className="username">@{user.username}</span>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      aria-label="External link"
+            <div className="diff-section mutual">
+              <h3>Mutual Followers ({diff.mutual.length})</h3>
+              {diff.mutual.length > 0 ? (
+                <div className="user-list">
+                  {diff.mutual.map((user) => (
+                    <a
+                      key={user.username}
+                      href={user.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="user-item"
                     >
-                      <title>Open Instagram profile</title>
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                      <polyline points="15 3 21 3 21 9" />
-                      <line x1="10" y1="14" x2="21" y2="3" />
-                    </svg>
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <p className="empty-message">No mutual followers found.</p>
-            )}
+                      <span className="username">@{user.username}</span>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-label="External link"
+                      >
+                        <title>Open Instagram profile</title>
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-message">No mutual followers found.</p>
+              )}
+            </div>
           </div>
         </div>
       )}

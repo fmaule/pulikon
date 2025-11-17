@@ -254,3 +254,112 @@
   border-radius: 6px;
   margin: 0;
 }
+
+/* Follower Change Tracking Styling */
+.changes-section {
+  margin-top: 30px;
+  padding: 25px;
+  background-color: #fff9e6;
+  border-radius: 8px;
+  border: 2px solid #ffd93d;
+}
+
+.changes-header {
+  margin-bottom: 20px;
+}
+
+.changes-header h2 {
+  margin: 0 0 10px 0;
+  color: #2d3748;
+  font-size: 1.5rem;
+}
+
+.baseline-timestamp {
+  color: #718096;
+  font-size: 0.9rem;
+  margin: 0 0 15px 0;
+}
+
+.baseline-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.baseline-button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.baseline-button.save {
+  background-color: #667eea;
+  color: white;
+}
+
+.baseline-button.save:hover {
+  background-color: #5a67d8;
+}
+
+.baseline-button.clear {
+  background-color: #e2e8f0;
+  color: #2d3748;
+}
+
+.baseline-button.clear:hover {
+  background-color: #cbd5e0;
+}
+
+.no-changes {
+  text-align: center;
+  padding: 30px;
+  background-color: #f0fff4;
+  border-radius: 6px;
+  color: #2f855a;
+  font-size: 1.1rem;
+}
+
+.change-section {
+  margin-bottom: 25px;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  border-left: 4px solid;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.change-section.unfollows {
+  border-left-color: #f56565;
+}
+
+.change-section.new-followers {
+  border-left-color: #48bb78;
+}
+
+.change-section.you-unfollowed {
+  border-left-color: #ed8936;
+}
+
+.change-section.new-mutual {
+  border-left-color: #9f7aea;
+}
+
+.change-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #2d3748;
+  font-size: 1.1rem;
+}
+
+/* Current Snapshot Header */
+.followers-diff > h2 {
+  margin: 0 0 20px 0;
+  color: #2d3748;
+  font-size: 1.5rem;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e2e8f0;
+}
