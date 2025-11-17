@@ -25,75 +25,8 @@
   margin: 0;
 }
 
-.time-display {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 2rem;
-  border-radius: 1rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-.time-display h2 {
-  margin: 0 0 1rem 0;
-  font-size: 1.5rem;
-}
-
-.time {
-  font-family: "Courier New", monospace;
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin: 0;
-}
-
-.greeting-button {
-  background: #646cff;
-  color: white;
-  border: none;
-  padding: 1rem 2rem;
-  font-size: 1.1rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.greeting-button:hover {
-  background: #535bf2;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(100, 108, 255, 0.4);
-}
-
-.features {
-  background: #f8f9fa;
-  padding: 2rem;
-  border-radius: 1rem;
-  border: 2px solid #e9ecef;
-  max-width: 600px;
-}
-
 .upload-section {
   width: 100%;
   max-width: 800px;
   margin: 2rem 0;
-}
-
-.upload-section h2 {
-  margin: 0 0 1.5rem 0;
-  color: #333;
-  font-size: 1.8rem;
-}
-
-.features h3 {
-  margin: 0 0 1rem 0;
-  color: #333;
-}
-
-.features ul {
-  text-align: left;
-  margin: 0;
-  padding-left: 1.5rem;
-}
-
-.features li {
-  margin-bottom: 0.5rem;
-  color: #555;
 }
