@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FileUpload } from "./components/FileUpload";
 import "./App.css";
 
 function App() {
@@ -47,6 +48,11 @@ function App() {
           Change Greeting
         </button>
 
+        <div className="upload-section">
+          <h2>Upload Instagram Export</h2>
+          <FileUpload />
+        </div>
+
         <div className="features">
           <h3>Features Demonstrated:</h3>
           <ul>
@@ -55,6 +61,8 @@ function App() {
             <li>Interactive components</li>
             <li>TypeScript integration</li>
             <li>Biome linting & formatting</li>
+            <li>File upload with drag & drop</li>
+            <li>ZIP file processing</li>
           </ul>
         </div>
       </header>

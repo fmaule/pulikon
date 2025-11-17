@@ -70,6 +70,18 @@
   max-width: 600px;
 }
 
+.upload-section {
+  width: 100%;
+  max-width: 800px;
+  margin: 2rem 0;
+}
+
+.upload-section h2 {
+  margin: 0 0 1.5rem 0;
+  color: #333;
+  font-size: 1.8rem;
+}
+
 .features h3 {
   margin: 0 0 1rem 0;
   color: #333;
